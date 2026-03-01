@@ -1,0 +1,22 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "API Key Manager",
+  "outputfilename": "api-key-manager",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "API Key Manager Team",
+    "email": "team@example.com"
+  },
+  "info": {
+    "companyName": "API Key Manager",
+    "productName": "API Key Manager",
+    "productVersion": "1.0.3",
+    "copyright": "Copyright........",
+    "comments": "Secure API Key Management Tool"
+  },
+  "obfuscate": false,
+  "garbageCollect": true
+}

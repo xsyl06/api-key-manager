@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>API Key Manager</title>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- 样式文件 -->
+    <link rel="stylesheet" href="./styles/reset.css"/>
+    <link rel="stylesheet" href="./styles/variables.css"/>
+    <link rel="stylesheet" href="./styles/glass.css"/>
+    <link rel="stylesheet" href="./styles/components.css"/>
+    <link rel="stylesheet" href="./styles/animations.css"/>
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部导航栏 -->
+        <header class="app-header">
+            <div class="header-left">
+                <h1>
+                    <i class="ph ph-key"></i>
+                    API Key Manager
+                </h1>
+                <button class="theme-toggle" id="themeToggle" aria-label="切换主题">
+                    <i class="ph ph-moon"></i>
+                </button>
+            </div>
+            <button class="btn-add" id="addKeyBtn">
+                <i class="ph ph-plus"></i>
+                添加
+            </button>
+        </header>
+
+        <!-- 主内容区 -->
+        <div class="app-main">
+            <!-- 左侧标签树 -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>标签</h2>
+                </div>
+                <div class="sidebar-content" id="tagList">
+                    <!-- 标签列表将由 JavaScript 渲染 -->
+                </div>
+                <div class="sidebar-footer">
+                    <button class="btn-new-tag" id="newTagBtn">
+                        <i class="ph ph-plus"></i>
+                        新标签
+                    </button>
+                </div>
+            </aside>
+
+            <!-- 右侧内容区 -->
+            <main class="main-content">
+                <!-- 搜索栏 -->
+                <div class="search-bar">
+                    <div class="search-input-wrapper">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" class="search-input glass-input" id="searchInput" placeholder="搜索网站名、标签或备注..."/>
+                    </div>
+                </div>
+
+                <!-- API Key 列表 -->
+                <div class="key-list" id="keyList">
+                    <!-- Key 列表将由 JavaScript 渲染 -->
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 添加/编辑弹窗 -->
+    <dialog id="keyModal" class="modal">
+        <div class="modal-header">
+            <h2 id="modalTitle">添加 API Key</h2>
+            <button class="modal-close" id="modalClose">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
+        <form id="keyForm">
+            <div class="form-group">
+                <label for="websiteInput">网站名称 *</label>
+                <input type="text" id="websiteInput" class="form-input glass-input" placeholder="例如: OpenAI" required/>
+            </div>
+            <div class="form-group">
+                <label for="keyInput">API Key *</label>
+                <input type="password" id="keyInput" class="form-input glass-input" placeholder="sk-..." required/>
+            </div>
+            <div class="form-group">
+                <label for="tagsInput">标签</label>
+                <div class="tags-input" id="tagsInput">
+                    <input type="text" id="tagInputField" placeholder="输入标签后按回车添加"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="noteInput">备注</label>
+                <textarea id="noteInput" class="form-textarea glass-input" placeholder="可选备注信息..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="glass-btn" id="modalCancel">取消</button>
+                <button type="submit" class="glass-btn glass-btn-primary">保存</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Toast 容器 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Wails 运行时 -->
+    <script src="./wailsjs/runtime/runtime.js"></script>
+    <script src="./wailsjs/go/main/App.js"></script>
+    <script src="./src/main.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+/* ============================================
+   CSS 变量定义
+   API Key Manager - 玻璃态设计系统
+   ============================================ */
+
+:root {
+  /* === 背景渐变 === */
+  --bg-gradient-start: #1a1a2e;
+  --bg-gradient-end: #16213e;
+  --bg-gradient: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+
+  /* === 玻璃态面板 - PRD 标准 === */
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-bg-hover: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-blur: 10px;
+
+  /* === 文字颜色 - PRD 标准 === */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.45);
+  --text-disabled: rgba(255, 255, 255, 0.3);
+
+  /* === 强调色 === */
+  --accent-start: #667eea;
+  --accent-end: #764ba2;
+  --accent-gradient: linear-gradient(135deg, var(--accent-start) 0%, var(--accent-end) 100%);
+  --accent-solid: #667eea;
+
+  /* === 功能色 === */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
+  /* === 阴影 - 增强多层悬浮感 === */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 20px rgba(102, 126, 234, 0.4);
+
+  /* === 间距 === */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* === 圆角 === */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* === 过渡 === */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 350ms ease;
+
+  /* === 布局 === */
+  --sidebar-width: 240px;
+  --header-height: 60px;
+  --border-radius: var(--radius-lg);
+
+  /* === 滚动条 - 暗色默认 === */
+  --scrollbar-track: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+
+  /* === 特殊元素 - 暗色默认 === */
+  --key-display-bg: rgba(0, 0, 0, 0.2);
+}
+
+/* === 暗色主题（默认） === */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 已是暗色，无需修改 */
+  }
+}
+
+/* === 浅色主题 === */
+[data-theme="light"] {
+  /* === 背景渐变 === */
+  --bg-gradient-start: #f5f7fa;
+  --bg-gradient-end: #e4e8ec;
+  --bg-gradient: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+
+  /* === 玻璃态面板 - 浅色 === */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-bg-hover: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-blur: 10px;
+
+  /* === 文字颜色 - 浅色 === */
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+  --text-disabled: #a0aec0;
+
+  /* === 阴影 - 浅色 === */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 20px rgba(102, 126, 234, 0.2);
+
+  /* === 滚动条 - 浅色 === */
+  --scrollbar-track: rgba(0, 0, 0, 0.05);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+
+  /* === 特殊元素 - 浅色 === */
+  --key-display-bg: rgba(0, 0, 0, 0.05);
+  --glass-overlay: rgba(0, 0, 0, 0.3);
+}
