@@ -13,8 +13,8 @@ const ThemeManager = {
     if (savedTheme) {
       this.applyTheme(savedTheme);
     } else {
-      // 默认为暗色主题
-      this.applyTheme('dark');
+      // 默认为浅色主题
+      this.applyTheme('light');
     }
     this.bindEvents();
   },
