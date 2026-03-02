@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 API Key Manager is a secure Windows desktop application for managing API keys, built with Wails (Go + WebView2). It uses AES-256-GCM encryption to store API keys locally with SHA-256 checksum verification.
 
-**Current Version**: V1.0.4 (V1.1 feature: tag library system)
+**Current Version**: V1.0.0 (V1.1 feature: tag library system)
+
+**Tech Stack**: Go 1.23 + Wails v2.11.0 + Node.js 23 + Vite + WebView2
 
 ## Commands
 
@@ -29,6 +31,14 @@ wails build
 
 # Build with trimpath for smaller binary
 wails build -trimpath
+```
+
+### Release
+```bash
+# Create a version tag and push to trigger GitHub Actions release workflow
+git tag v1.0.1
+git push origin v1.0.1
+# GitHub Actions will build Windows/Linux binaries and create a release
 ```
 
 ## Architecture
@@ -216,7 +226,7 @@ data/
 
 ### Phosphor Icons (Local)
 
-V1.0.4+ uses local icon files instead of CDN to avoid network dependency:
+V1.0.0+ uses local icon files instead of CDN to avoid network dependency:
 - Font files: `frontend/public/phosphor-icons/*.woff2` (Regular, Bold, Fill variants)
 - CSS: `frontend/public/phosphor-icons/phosphor-icons.css`
 - Usage: `<i class="ph ph-key"></i>` (Regular), `<i class="ph-fill ph-key"></i>` (Fill)
