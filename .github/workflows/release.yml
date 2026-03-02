@@ -77,7 +77,7 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
 
       - name: Build Linux
-        run: wails build -trimpath
+        run: wails build -trimpath -tags webkit2_41
 
       - name: Get version from tag
         id: get_version
