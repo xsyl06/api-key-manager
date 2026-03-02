@@ -94,7 +94,7 @@
 
 ### 安装方式
 
-从 [Releases](https://gitee.com/xsyl06/api-key-manager/releases) 下载对应平台的安装包：
+从 [Releases](https://github.com/xsyl06/api-key-manager/releases) 下载对应平台的安装包：
 
 | 平台 | 文件 |
 |------|------|
@@ -107,7 +107,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://gitee.com/xsyl06/api-key-manager.git
+git clone https://github.com/xsyl06/api-key-manager.git
 cd api-key-manager
 
 # 安装前端依赖
