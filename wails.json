@@ -8,12 +8,12 @@
   "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "API Key Manager Team",
-    "email": "team@example.com"
+    "email": "xsyl06@qq.com"
   },
   "info": {
     "companyName": "API Key Manager",
     "productName": "API Key Manager",
-    "productVersion": "1.0.3",
+    "productVersion": "1.0.4",
     "copyright": "Copyright........",
     "comments": "Secure API Key Management Tool"
   },

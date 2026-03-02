@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 API Key Manager is a secure Windows desktop application for managing API keys, built with Wails (Go + WebView2). It uses AES-256-GCM encryption to store API keys locally with SHA-256 checksum verification.
 
-**Current Version**: V1.0.3 (V1.1 feature: tag library system)
+**Current Version**: V1.0.4 (V1.1 feature: tag library system)
 
 ## Commands
 
@@ -48,11 +48,16 @@ wails build -trimpath
 ### Frontend (Vanilla JS + Vite)
 
 The frontend uses vanilla JavaScript with glassmorphism styling. Module structure:
-- `frontend/src/main.js` - Core UI logic, state management (AppState), loadData, renderKeys/renderTags
+- `frontend/src/main.js` - App entry, state (AppState), layout rendering, event binding
+- `frontend/src/state.js` - Observer pattern state management (AppState with subscribe/notify)
+- `frontend/src/api.js` - Wails backend API wrapper with error handling
+- `frontend/src/ui.js` - UI rendering (renderTagList, renderKeyList, showToast, loadAllData)
 - `frontend/src/tags.js` - Tag management module, TagManager with caching, tag CRUD modals
 - `frontend/src/import-export.js` - Import/export, conflict resolution dialog
-- `frontend/src/theme.js` - Theme toggle (light/dark mode)
-- `frontend/styles/` - CSS files (glass.css, components.css, animations.css)
+- `frontend/src/theme.js` - Theme toggle (light/dark mode) with localStorage persistence
+- `frontend/src/utils.js` - Utility functions (clipboard, masking, validation, debounce/throttle)
+- `frontend/public/phosphor-icons/` - Local Phosphor Icons fonts (woff2) + CSS
+- `frontend/styles/` - CSS files (variables.css, glass.css, components.css, animations.css, reset.css)
 
 ### V1.1 Data Model Changes
 
@@ -155,22 +160,32 @@ func (s *KeyService) SearchKeys(query string, selectedTag string) ([]models.APIK
        │    │
        ▼    ▼
 ┌─────────────────────────────────────────────────────────┐
-│                    Module Interaction                    │
+│                    Frontend Module Architecture          │
 ├─────────────────────────────────────────────────────────┤
 │                                                          │
-│  loadData() ─────▶ GetAllTags() ─────▶ AppState.tags    │
-│       │                                                  │
-│       ├──▶ LoadKeys() ─────────▶ AppState.keys          │
-│       │                                                  │
-│       └──▶ renderTags() ◀── uses AppState.tags          │
-│       │                                                  │
-│       └──▶ renderKeys() ◀── uses AppState.colors        │
-│                          (tagId→Tag mapping)             │
+│  main.js (Entry)                                        │
+│  └──▶ api.js ──────▶ window.go.main.App.* (Wails)      │
+│  │                                                       │
+│  ├──▶ state.js (AppState)                              │
+│  │    └── subscribe/notify pattern for reactive UI     │
+│  │                                                       │
+│  └──▶ ui.js                                           │
+│       ├── renderTagList() ◀── AppState.tags           │
+│       ├── renderKeyList() ◀── AppState.keys           │
+│       └── showToast() ◀── window.showToast             │
 │                                                          │
-│  Tag Management                                          │
-│  openTagManagementModal() ──▶ TagManager.getAllTags()   │
-│                          ──▶ CreateTag/UpdateTag/Delete │
-│                          ──▶ window.loadData() ◄──── refresh │
+│  tags.js                                                │
+│  └── TagManager (5-sec cache)                          │
+│       └── openTagManagementModal()                     │
+│           └── CreateTag/UpdateTag/Delete               │
+│           └── window.loadData() ◄── refresh after mutation │
+│                                                          │
+│  theme.js                                               │
+│  └── ThemeManager.init() ◀── localStorage              │
+│  └── toggle() ──▶ html[data-theme]                     │
+│                                                          │
+│  utils.js                                               │
+│  └── copyToClipboard, maskKey, validate*               │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -198,6 +213,13 @@ data/
 - **File Dialog**: Always use `runtime.OpenFileDialog` from Go backend - HTML File API doesn't work reliably in WebView2
 
 ## Key Implementation Details
+
+### Phosphor Icons (Local)
+
+V1.0.4+ uses local icon files instead of CDN to avoid network dependency:
+- Font files: `frontend/public/phosphor-icons/*.woff2` (Regular, Bold, Fill variants)
+- CSS: `frontend/public/phosphor-icons/phosphor-icons.css`
+- Usage: `<i class="ph ph-key"></i>` (Regular), `<i class="ph-fill ph-key"></i>` (Fill)
 
 ### Frontend Global Exports
 
@@ -266,6 +288,8 @@ Use `getContrastColor(hexColor)` to determine black/white text based on backgrou
 4. **Missing `clearCache()` in TagManager** - Stale data will be returned
 5. **Not handling V1.0→V1.1 migration** - Old data won't load correctly
 6. **Deadlock with mutex in ImportWithResolution** - Never call `ImportData` from within `ImportWithResolution` (or any method that holds `s.mu` lock) - use `runtime.OpenFileDialog` for native file dialogs instead of HTML File API
+7. **Importing state.js incorrectly** - `AppState` is exported as default; use `import AppState from './state.js'` not named import
+8. **Calling API directly instead of through api.js** - Use the wrapped API in `api.js` for consistent error handling
 
 ## Error Handling
 

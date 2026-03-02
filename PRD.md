@@ -8,6 +8,147 @@
 
 ## 📝 版本更新记录
 
+### V1.0.4 (2026-03-02)
+
+#### 1. Phosphor Icons 本地化
+
+**需求**: 将图标库从 CDN 加载改为本地加载，解决网络超时导致图标无法显示的问题
+
+**问题描述**:
+- 启动应用时报 `cdn.jsdelivr.net ERR_CONNECTION_TIMED_OUT` 错误
+- 所有 Phosphor Icons 图标无法显示
+- 应用依赖网络才能正常使用图标
+
+**ASCII 原型图**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    架构变更对比                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  【修改前 - CDN 加载】                                           │
+│  ┌──────────────┐         网络请求              ┌──────────┐    │
+│  │  Wails App   │ ───────────────────────────▶ │   CDN    │    │
+│  │  (WebView2)  │   unpkg.com (超时风险)        │  (失败)  │    │
+│  └──────────────┘                               └──────────┘    │
+│         │                                                        │
+│         │ 图标无法渲染 ❌                                         │
+│         ▼                                                        │
+│  ┌──────────────────────────────────────────────────────┐       │
+│  │  index.html: <script src="https://unpkg.com/...">    │       │
+│  └──────────────────────────────────────────────────────┘       │
+│                                                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  【修改后 - 本地加载】                                           │
+│  ┌──────────────┐                                               │
+│  │  Wails App   │  ✅ 零网络依赖                                 │
+│  │  (WebView2)  │                                               │
+│  └──────────────┘                                               │
+│         │                                                        │
+│         │ 本地文件读取                                           │
+│         ▼                                                        │
+│  ┌──────────────────────────────────────────────────────┐       │
+│  │            frontend/public/phosphor-icons/            │       │
+│  │  ┌────────────────────────────────────────────────┐  │       │
+│  │  │  Phosphor.woff2       (147 KB) - Regular 字体   │  │       │
+│  │  │  Phosphor-Bold.woff2  (150 KB) - Bold 字体      │  │       │
+│  │  │  Phosphor-Fill.woff2  (131 KB) - Fill 字体      │  │       │
+│  │  │  phosphor-icons.css   (250 KB) - 完整图标映射   │  │       │
+│  │  └────────────────────────────────────────────────┘  │       │
+│  └──────────────────────────────────────────────────────┘       │
+│         │                                                        │
+│         │ CSS 引用                                               │
+│         ▼                                                        │
+│  ┌──────────────────────────────────────────────────────┐       │
+│  │  index.html: <link rel="stylesheet" href="./public/  │       │
+│  │               phosphor-icons/phosphor-icons.css">    │       │
+│  └──────────────────────────────────────────────────────┘       │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**技术方案**:
+
+| 文件 | 变更类型 | 说明 |
+|------|----------|------|
+| `frontend/public/phosphor-icons/Phosphor.woff2` | 新增 | Regular 字体文件 (147 KB) |
+| `frontend/public/phosphor-icons/Phosphor-Bold.woff2` | 新增 | Bold 字体文件 (150 KB) |
+| `frontend/public/phosphor-icons/Phosphor-Fill.woff2` | 新增 | Fill 字体文件 (131 KB) |
+| `frontend/public/phosphor-icons/phosphor-icons.css` | 新增 | 完整官方 CSS 映射文件 (250 KB) |
+| `frontend/index.html` | 修改 | CDN script 标签替换为本地 CSS link |
+
+**图标映射验证 (项目使用的 49 个图标)**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     图标使用清单                                 │
+├──────────────────┬──────────────────────────────────────────────┤
+│    图标类名       │                   用途                        │
+├──────────────────┼──────────────────────────────────────────────┤
+│ ph-key           │ ✅ 标题、API Key 卡片                         │
+│ ph-moon          │ ✅ 主题切换（暗色模式）                        │
+│ ph-sun           │ ✅ 主题切换（亮色模式）                        │
+│ ph-plus          │ ✅ 添加按钮、创建标签                          │
+│ ph-magnifying-glass │ ✅ 搜索框                               │
+│ ph-x             │ ✅ 关闭弹窗                                   │
+│ ph-tag           │ ✅ 标签相关                                   │
+│ ph-folders       │ ✅ 标签树图标                                 │
+│ ph-eye           │ ✅ 显示密码                                   │
+│ ph-eye-slash     │ ✅ 隐藏密码                                   │
+│ ph-copy          │ ✅ 复制按钮                                   │
+│ ph-pencil        │ ✅ 编辑按钮                                   │
+│ ph-trash         │ ✅ 删除按钮                                   │
+│ ph-check-circle  │ ✅ 成功提示                                   │
+│ ph-x-circle      │ ✅ 错误提示                                   │
+│ ph-warning       │ ✅ 警告提示                                   │
+│ ph-info          │ ✅ 信息提示                                   │
+│ ph-download-simple │ ✅ 导出按钮                                 │
+│ ph-upload-simple │ ✅ 导入按钮                                   │
+│ ph-gear          │ ✅ 管理标签                                   │
+│ ph-arrow-counter-clockwise │ ✅ 恢复按钮                        │
+│ ph-fill ph-chat-centered │ ✅ OpenAI 品牌                      │
+│ ph-fill ph-sparkle │ ✅ Anthropic 品牌                          │
+│ ph-fill ph-github-logo │ ✅ GitHub 品牌                        │
+│ ph-fill ph-google-logo │ ✅ Google 品牌                        │
+│ ph-fill ph-microsoft-logo │ ✅ Microsoft/Azure 品牌            │
+│ ph-fill ph-cloud │ ✅ AWS/Cloudflare 品牌                       │
+│ ph-fill ph-credit-card │ ✅ Stripe 品牌                        │
+│ ph-fill ph-envelope │ ✅ SendGrid 品牌                         │
+│ ph-fill ph-vector-three │ ✅ Vercel 品牌                       │
+│ ph-fill ph-globe │ ✅ Netlify 品牌                              │
+│ ph-fill ph-hard-drives │ ✅ DigitalOcean 品牌                  │
+│ ph-fill ph-cloud-arrow-up │ ✅ Heroku 品牌                     │
+│ ph-fill ph-gitlab-logo │ ✅ GitLab 品牌                        │
+│ ph-fill ph-chats-circle │ ✅ Slack 品牌                        │
+│ ph-fill ph-discord-logo │ ✅ Discord 品牌                      │
+│ ph-fill ph-twitter-logo │ ✅ Twitter 品牌                      │
+│ ph-fill ph-notebook │ ✅ Notion 品牌                           │
+│ ph-fill ph-figma-logo │ ✅ Figma 品牌                          │
+└──────────────────┴──────────────────────────────────────────────┘
+```
+
+**技术要点**:
+
+1. **官方 CSS 文件**: 直接使用 Phosphor Icons v2.1.1 官方 CSS，包含完整的 `:before` 伪元素 + Unicode content 映射
+
+2. **三种字体变体**:
+   - `Phosphor` (Regular): 默认样式，类名 `.ph`
+   - `Phosphor-Bold`: 粗体样式，类名 `.ph-bold`
+   - `Phosphor-Fill`: 填充样式，类名 `.ph-fill`
+
+3. **字体路径**: CSS 中使用相对路径 `./Phosphor.woff2`，与字体文件同目录
+
+4. **Ligatures 支持**: CSS 启用 `font-feature-settings: "liga"` 支持连字特性
+
+**非相关模块（不受影响）**:
+- ✅ 所有业务逻辑文件 (`main.js`, `tags.js`, `import-export.js`, `ui.js`, `theme.js`)
+- ✅ 图标类名使用方式完全不变 (`<i class="ph ph-key"></i>`)
+- ✅ 样式文件 (`styles/*.css`)
+- ✅ 后端 Go 代码
+
+---
+
 ### V1.0.3 (2026-03-01)
 
 #### 1. 导入功能修复
