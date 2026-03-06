@@ -185,6 +185,34 @@ function validateNote(note) {
     return note.length <= 500;
 }
 
+/**
+ * 切换 Key 显示/隐藏状态
+ * @param {HTMLElement} displayElement - 显示 Key 的 DOM 元素
+ * @param {string} maskedKey - 掩码后的 Key
+ * @param {string} fullKey - 完整 Key
+ * @returns {boolean} - 当前是否为明文显示状态
+ */
+function toggleKeyVisibility(displayElement, maskedKey, fullKey = null) {
+    const isPlaintext = displayElement.classList.contains('key-plaintext');
+
+    if (isPlaintext) {
+        // 切换为掩码显示
+        displayElement.textContent = maskedKey;
+        displayElement.classList.remove('key-plaintext');
+        displayElement.classList.add('key-masked');
+        return false;
+    } else {
+        // 切换为明文显示
+        if (fullKey) {
+            displayElement.textContent = fullKey;
+            displayElement.classList.remove('key-masked');
+            displayElement.classList.add('key-plaintext');
+            return true;
+        }
+        return false;
+    }
+}
+
 export {
     copyToClipboard,
     maskKey,
@@ -195,5 +223,6 @@ export {
     validateWebsite,
     validateAPIKey,
     validateTags,
-    validateNote
+    validateNote,
+    toggleKeyVisibility
 };

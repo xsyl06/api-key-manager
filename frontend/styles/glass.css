@@ -81,6 +81,18 @@ body {
   box-shadow: var(--shadow-glow);
 }
 
+/* === 危险按钮 === */
+.glass-btn-danger {
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  border: none;
+  color: white;
+}
+
+.glass-btn-danger:hover {
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
 /* === 玻璃态输入框 === */
 .glass-input {
   background: rgba(255, 255, 255, 0.05);

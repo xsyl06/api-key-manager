@@ -53,14 +53,27 @@ const ImportExportManager = {
 
 // === 打开导出对话框 ===
 function openExportDialog() {
+    // 显示 loading 提示
+    showToast('正在导出数据...', 'info');
+
     ImportExportManager.exportData()
         .then(filePath => {
+            // 清除所有 toast，避免堆叠
+            const toastContainer = document.getElementById('toastContainer');
+            if (toastContainer) {
+                toastContainer.innerHTML = '';
+            }
             // 提取文件名（从完整路径中）
             const fileName = filePath.split(/[\\/]/).pop() || filePath;
-            showToast('success', `✅ 导出成功！\n\n📁 ${fileName}`);
+            showToast(`导出成功！文件：${fileName}`, 'success');
         })
         .catch(error => {
-            showToast('error', '❌ ' + error.message);
+            // 清除 loading toast
+            const toastContainer = document.getElementById('toastContainer');
+            if (toastContainer) {
+                toastContainer.innerHTML = '';
+            }
+            showToast('导出失败：' + error.message, 'error');
         });
 }
 
@@ -76,7 +89,7 @@ function openImportDialog() {
 
             console.log('选择的文件路径:', filePath);
 
-            showToast('info', '正在分析导入数据...');
+            showToast('正在分析导入数据...', 'info');
 
             return ImportExportManager.importData(filePath)
                 .then(result => {
@@ -96,7 +109,7 @@ function openImportDialog() {
             // 增强错误信息处理
             const errorMsg = error.message || error.error || error.toString() || '未知错误';
             console.error('导入错误详情:', error);
-            showToast('error', '导入失败: ' + errorMsg);
+            showToast('导入失败：' + errorMsg, 'error');
         });
 }
 
@@ -226,7 +239,7 @@ function openConflictResolveDialog(zipPath, importInfo) {
                 resolve(stats); // 解决 Promise
             } catch (error) {
                 console.error('导入失败:', error);
-                showToast('error', '导入失败: ' + error.message);
+                showToast('导入失败：' + error.message, 'error');
                 reject(error); // 拒绝 Promise
             } finally {
                 isImporting = false;
@@ -302,9 +315,9 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showToast(type, message) {
+function showToast(message, type = 'info') {
     if (window.showToast) {
-        window.showToast(type, message);
+        window.showToast(message, type);
     } else {
         console.log(`[${type}]`, message);
     }

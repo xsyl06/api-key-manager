@@ -3,7 +3,8 @@
     "allow": [
       "Bash(curl:*)",
       "mcp__web_reader__webReader",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(node:*)"
     ]
   }
 }
