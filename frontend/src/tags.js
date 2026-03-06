@@ -283,22 +283,22 @@ function openTagManagementModal() {
         const name = nameInput.value.trim();
 
         if (!TagManager.isValidTagName(name)) {
-            showToast('error', '请输入有效的标签名称（1-20个字符）');
+            showToast('请输入有效的标签名称（1-20个字符）', 'error');
             return;
         }
 
         if (!TagManager.isValidColor(selectedColor)) {
-            showToast('error', '请选择有效的颜色');
+            showToast('请选择有效的颜色', 'error');
             return;
         }
 
         try {
             await TagManager.createTag(name, selectedColor);
-            showToast('success', '标签创建成功');
+            showToast('标签创建成功', 'success');
             nameInput.value = '';
             await loadTagList();
         } catch (error) {
-            showToast('error', '创建失败: ' + error.message);
+            showToast('创建失败： ' + error.message, 'error');
         }
     });
 
@@ -397,23 +397,23 @@ function openEditTagModal(tag, onSave) {
         const name = nameInput.value.trim();
 
         if (!TagManager.isValidTagName(name)) {
-            showToast('error', '请输入有效的标签名称（1-20个字符）');
+            showToast('请输入有效的标签名称（1-20个字符）', 'error');
             return;
         }
 
         if (!TagManager.isValidColor(selectedColor)) {
-            showToast('error', '请选择有效的颜色');
+            showToast('请选择有效的颜色', 'error');
             return;
         }
 
         try {
             await TagManager.updateTag(tag.id, name, selectedColor);
-            showToast('success', '标签更新成功');
+            showToast('标签更新成功', 'success');
             modal.close();
             modal.remove();
             if (onSave) onSave();
         } catch (error) {
-            showToast('error', '更新失败: ' + error.message);
+            showToast('更新失败： ' + error.message, 'error');
         }
     });
 
@@ -482,12 +482,12 @@ function openDeleteTagConfirm(tag, onDelete) {
 
             try {
                 await TagManager.deleteTag(tag.id, removeFromKeys);
-                showToast('success', '标签删除成功');
+                showToast('标签删除成功', 'success');
                 modal.close();
                 modal.remove();
                 if (onDelete) onDelete();
             } catch (error) {
-                showToast('error', '删除失败: ' + error.message);
+                showToast('删除失败： ' + error.message, 'error');
             }
         });
 
@@ -504,10 +504,10 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showToast(type, message) {
+function showToast(message, type = 'info') {
     // 假设在 main.js 中有全局的 showToast 函数
     if (window.showToast) {
-        window.showToast(type, message);
+        window.showToast(message, type);
     } else {
         console.log(`[${type}]`, message);
     }
