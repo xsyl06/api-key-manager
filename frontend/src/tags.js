@@ -272,7 +272,13 @@ function openTagManagementModal() {
 
             item.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
                 const tag = tags.find(t => t.id === tagId);
-                openDeleteTagConfirm(tag, () => loadTagList());
+                openDeleteTagConfirm(tag, () => {
+                    loadTagList();
+                    // 刷新主页面 API Key 列表
+                    if (window.loadData) {
+                        window.loadData();
+                    }
+                });
             });
         });
     }

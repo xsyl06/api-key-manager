@@ -4,7 +4,7 @@
  */
 
 import AppState from './state.js';
-import { copyToClipboard, maskKey, formatTimestamp } from './utils.js';
+import { copyToClipboard, maskKey, formatTimestamp, toggleKeyVisibility } from './utils.js';
 
 /**
  * 渲染标签列表
@@ -57,13 +57,47 @@ function renderKeyList() {
 
     // 空状态
     if (keys.length === 0) {
+        const isSearching = AppState.searchQuery || AppState.selectedTag;
         container.innerHTML = `
-            <div class="empty-state">
-                <i class="ph ph-key"></i>
-                <h3>暂无 API Key</h3>
-                <p>${AppState.searchQuery || AppState.selectedTag ? '没有找到匹配的结果' : '点击右上角「添加」按钮添加第一个 API Key'}</p>
+            <div class="empty-state animate-fade-in">
+                <i class="ph ${isSearching ? 'ph-magnifying-glass' : 'ph-key'}"></i>
+                <h3>${isSearching ? '未找到匹配结果' : '暂无 API Key'}</h3>
+                <p>${isSearching
+                    ? `没有找到与"${escapeHtml(AppState.searchQuery || '')}"匹配的结果，请尝试其他关键词或标签`
+                    : '点击右上角「添加」按钮添加第一个 API Key，或从其他设备导入数据'
+                }</p>
+                ${!isSearching ? `
+                    <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-lg);">
+                        <button class="glass-btn glass-btn-primary" id="btnAddFromEmpty">
+                            <i class="ph ph-plus"></i> 添加 API Key
+                        </button>
+                        <button class="glass-btn" id="btnImportFromEmpty">
+                            <i class="ph ph-upload-simple"></i> 导入数据
+                        </button>
+                    </div>
+                ` : `
+                    <button class="glass-btn" id="btnClearSearch" style="margin-top: var(--spacing-lg);">
+                        <i class="ph ph-x-circle"></i> 清除搜索条件
+                    </button>
+                `}
             </div>
         `;
+
+        // 绑定空状态按钮事件
+        if (!isSearching) {
+            document.getElementById('btnAddFromEmpty')?.addEventListener('click', () => {
+                document.getElementById('btnAdd')?.click();
+            });
+            document.getElementById('btnImportFromEmpty')?.addEventListener('click', () => {
+                document.getElementById('btnImport')?.click();
+            });
+        } else {
+            document.getElementById('btnClearSearch')?.addEventListener('click', () => {
+                AppState.searchQuery = '';
+                AppState.selectTag(null);
+                document.getElementById('searchInput').value = '';
+            });
+        }
         return;
     }
 
@@ -140,23 +174,24 @@ async function handleViewKey(keyId, itemElement) {
     const button = itemElement.querySelector('[data-action="view"]');
     const icon = button?.querySelector('i');
 
-    // 如果已经显示完整 Key，则隐藏
-    if (displayElement.dataset.plaintext === 'true') {
+    // 尝试切换显示状态
+    const isPlaintext = displayElement.classList.contains('key-plaintext');
+
+    if (isPlaintext) {
+        // 当前为明文，切换为掩码
         const key = AppState.keys.find(k => k.id === keyId);
-        displayElement.textContent = key?.maskedKey || '••••••••';
-        displayElement.dataset.plaintext = 'false';
+        toggleKeyVisibility(displayElement, key?.maskedKey || '••••••••');
         icon?.classList.replace('ph-eye-slash', 'ph-eye');
         return;
     }
 
-    // 解密并显示完整 Key
+    // 当前为掩码，解密后切换为明文
     try {
         const API = (await import('./api.js')).default;
         const result = await API.decryptKey(keyId);
 
         if (result.success) {
-            displayElement.textContent = result.data;
-            displayElement.dataset.plaintext = 'true';
+            toggleKeyVisibility(displayElement, result.data.maskedKey || maskKey(keyId), result.data);
             icon?.classList.replace('ph-eye', 'ph-eye-slash');
         } else {
             showToast(result.message, 'error');
@@ -215,7 +250,15 @@ function handleEditKey(keyId) {
  * 处理删除 Key
  */
 async function handleDeleteKey(keyId) {
-    if (!confirm('确定要删除这个 API Key 吗？此操作不可恢复。')) {
+    const confirmed = await showConfirmDialog({
+        title: '删除 API Key',
+        message: '确定要删除这个 API Key 吗？此操作不可恢复。',
+        confirmText: '删除',
+        cancelText: '取消',
+        type: 'danger'
+    });
+
+    if (!confirmed) {
         return;
     }
 
@@ -348,11 +391,75 @@ function escapeHtml(text) {
     return String(text).replace(/[&<>"']/g, m => map[m]);
 }
 
+/**
+ * 显示确认对话框
+ * @param {string} title - 对话框标题
+ * @param {string} message - 确认消息
+ * @param {string} confirmText - 确认按钮文字
+ * @param {string} cancelText - 取消按钮文字
+ * @param {string} type - 类型 (danger, warning, info)
+ * @returns {Promise<boolean>} - 用户是否确认
+ */
+function showConfirmDialog(options = {}) {
+    const {
+        title = '确认操作',
+        message = '确定要执行此操作吗？',
+        confirmText = '确认',
+        cancelText = '取消',
+        type = 'danger'
+    } = options;
+
+    return new Promise((resolve) => {
+        const modal = document.createElement('dialog');
+        modal.className = 'modal confirm-dialog';
+        modal.innerHTML = `
+            <div class="modal-content animate-scale-in">
+                <div class="modal-header">
+                    <h2>${escapeHtml(title)}</h2>
+                    <button class="modal-close"><i class="ph ph-x"></i></button>
+                </div>
+                <div class="confirm-dialog-content">
+                    <p style="margin-bottom: var(--spacing-md); color: var(--text-secondary);">${escapeHtml(message)}</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="glass-btn btn-cancel">${escapeHtml(cancelText)}</button>
+                    <button type="button" class="glass-btn glass-btn-${type === 'danger' ? 'danger' : 'primary'} btn-confirm">${escapeHtml(confirmText)}</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.showModal();
+
+        const handleConfirm = () => {
+            modal.close();
+            modal.remove();
+            resolve(true);
+        };
+
+        const handleCancel = () => {
+            modal.close();
+            modal.remove();
+            resolve(false);
+        };
+
+        modal.querySelector('.btn-confirm').addEventListener('click', handleConfirm);
+        modal.querySelector('.btn-cancel').addEventListener('click', handleCancel);
+        modal.querySelector('.modal-close').addEventListener('click', handleCancel);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                handleCancel();
+            }
+        });
+    });
+}
+
 export {
     renderTagList,
     renderKeyList,
     renderTagsInput,
     addTagChip,
     showToast,
-    loadAllData
+    loadAllData,
+    showConfirmDialog
 };
