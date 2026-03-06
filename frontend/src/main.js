@@ -15,6 +15,9 @@ import { TagManager, openTagManagementModal } from './tags.js';
 // 导入导出
 import { openExportDialog, openImportDialog } from './import-export.js';
 
+// UI 组件（Toast、确认对话框）
+import { showToast, showConfirmDialog } from './ui.js';
+
 // 导入样式
 import '../styles/reset.css';
 import '../styles/variables.css';
@@ -77,6 +80,10 @@ function initApp() {
     ThemeManager.init();
     bindEvents();
     loadData();
+
+    // 导出全局函数供其他模块使用
+    window.showToast = showToast;
+    window.loadData = loadData;
 }
 
 // === 渲染布局 ===
@@ -121,6 +128,9 @@ function renderLayout() {
                     <div class="search-input-wrapper">
                         <i class="ph ph-magnifying-glass"></i>
                         <input type="text" class="glass-input search-input" id="searchInput" placeholder="搜索网站、标签或备注...">
+                        <button class="search-clear-btn" id="searchClearBtn" title="清除搜索条件" style="display: none;">
+                            <i class="ph ph-x-circle"></i>
+                        </button>
                     </div>
                 </div>
                 <div class="key-list" id="keyList">
@@ -139,6 +149,7 @@ function renderLayout() {
         btnManageTags: document.getElementById('btnManageTags'),
         tagList: document.getElementById('tagList'),
         searchInput: document.getElementById('searchInput'),
+        searchClearBtn: document.getElementById('searchClearBtn'),
         keyList: document.getElementById('keyList'),
         toastContainer: document.getElementById('toastContainer')
     };
@@ -152,8 +163,86 @@ function bindEvents() {
     elements.btnManageTags.addEventListener('click', () => openTagManagementModal());
     elements.searchInput.addEventListener('input', (e) => {
         AppState.searchQuery = e.target.value;
+        updateSearchClearButton();
         filterKeys();
     });
+    elements.searchClearBtn.addEventListener('click', () => {
+        AppState.searchQuery = '';
+        elements.searchInput.value = '';
+        updateSearchClearButton();
+        filterKeys();
+    });
+
+    // === 键盘快捷键 ===
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+}
+
+// === 键盘快捷键处理 ===
+function handleKeyboardShortcuts(e) {
+    // 忽略输入框中的按键（除了 Escape）
+    const isInputFocused = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+
+    // Escape: 关闭当前对话框/清除搜索
+    if (e.key === 'Escape') {
+        // 尝试关闭当前打开的对话框
+        const openDialog = document.querySelector('dialog[open]');
+        if (openDialog) {
+            openDialog.close();
+            openDialog.remove();
+            return;
+        }
+        // 清除搜索
+        if (AppState.searchQuery) {
+            AppState.searchQuery = '';
+            elements.searchInput.value = '';
+            filterKeys();
+            return;
+        }
+    }
+
+    // 输入框聚焦时，不响应其他快捷键
+    if (isInputFocused) return;
+
+    // Ctrl/Cmd + N: 新建 API Key
+    if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        openAddModal();
+        return;
+    }
+
+    // Ctrl/Cmd + F: 聚焦搜索框
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        elements.searchInput.focus();
+        return;
+    }
+
+    // Ctrl/Cmd + E: 导出数据
+    if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        openExportDialog();
+        return;
+    }
+
+    // Ctrl/Cmd + I: 导入数据
+    if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+        e.preventDefault();
+        openImportDialog();
+        return;
+    }
+
+    // Ctrl/Cmd + T: 管理标签
+    if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+        e.preventDefault();
+        openTagManagementModal();
+        return;
+    }
+
+    // Delete/Backspace: 删除选中的 Key（需要先选中）
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        // 未来可扩展：删除选中的 key
+        return;
+    }
 }
 
 // === 加载数据 ===
@@ -173,7 +262,7 @@ async function loadData() {
         filterKeys();
     } catch (error) {
         // 生产环境移除 console，仅显示用户友好错误消息
-        showToast('error', '加载数据失败');
+        showToast('加载数据失败', 'error');
         console.error(error);
     } finally {
         AppState.loading = false;
@@ -241,6 +330,7 @@ async function filterKeys() {
         const selectedTagId = AppState.selectedTag || 'all';
         const keys = await SearchKeys(AppState.searchQuery, selectedTagId);
         AppState.displayedKeys = keys || [];
+        updateSearchClearButton();
         renderKeys();
     } catch (error) {
         console.error('筛选失败:', error);
@@ -250,16 +340,38 @@ async function filterKeys() {
     }
 }
 
+// === 更新搜索清除按钮显示状态 ===
+function updateSearchClearButton() {
+    if (elements.searchClearBtn) {
+        const hasQuery = AppState.searchQuery && AppState.searchQuery.trim().length > 0;
+        elements.searchClearBtn.style.display = hasQuery ? 'inline-flex' : 'none';
+    }
+}
+
 // === 渲染 Key 列表 ===
 function renderKeys() {
     if (AppState.displayedKeys.length === 0) {
+        const isEmpty = !AppState.selectedTag && !AppState.searchQuery;
         elements.keyList.innerHTML = `
             <div class="empty-state">
-                <i class="ph ph-key"></i>
-                <h3>暂无 API Key</h3>
-                <p>点击右上角「添加」按钮添加第一个 Key</p>
+                <i class="ph ${isEmpty ? 'ph-key' : 'ph-magnifying-glass'}"></i>
+                <h3>${isEmpty ? '还没有密钥' : '未找到匹配的密钥'}</h3>
+                <p>${isEmpty
+                    ? '点击右上角「添加」按钮添加第一个 API Key'
+                    : '尝试其他关键词，或清除筛选条件'}</p>
+                ${isEmpty ? `
+                    <button class="btn-add" id="emptyStateAddBtn" style="margin-top: var(--spacing-md);">
+                        <i class="ph ph-plus"></i> 添加第一个密钥
+                    </button>
+                ` : ''}
             </div>
         `;
+
+        // 绑定添加按钮事件
+        const addBtn = document.getElementById('emptyStateAddBtn');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => openAddModal());
+        }
         return;
     }
 
@@ -269,7 +381,14 @@ function renderKeys() {
         tagMap.set(tag.id, tag);
     }
 
-    elements.keyList.innerHTML = AppState.displayedKeys.map((key, index) => `
+    elements.keyList.innerHTML = AppState.displayedKeys.map((key, index) => {
+        // 生成脱敏 Key
+        const fullKey = key.key || '';
+        const maskedKey = fullKey.length > 12
+            ? `${fullKey.slice(0, 8)}••••••${fullKey.slice(-4)}`
+            : '••••••••';
+
+        return `
         <div class="key-item animate-list-item" style="animation-delay: ${index * 50}ms" data-id="${key.id}">
             <div class="key-website">
                 <i class="ph ${getWebsiteIcon(key.website)}"></i> ${escapeHtml(key.website)}
@@ -283,7 +402,7 @@ function renderKeys() {
                     return '';
                 }).join('')}
             </div>
-            <div class="key-display" data-key-id="${key.id}">sk-xxxx...xxxx</div>
+            <div class="key-display key-masked" data-key-id="${key.id}" data-masked-key="${maskedKey}">${maskedKey}</div>
             <div class="key-actions">
                 <button class="icon-btn" data-action="toggle" title="显示/隐藏">
                     <i class="ph ph-eye"></i>
@@ -299,28 +418,51 @@ function renderKeys() {
                 </button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 
     // 绑定操作事件
     elements.keyList.querySelectorAll('.key-item').forEach(item => {
         const keyId = item.dataset.id;
         let keyVisible = false;
 
+        // 存储定时器 ID 在元素上
+        let autoHideTimer = null;
+
         item.querySelector('[data-action="toggle"]')?.addEventListener('click', async () => {
             keyVisible = !keyVisible;
             const displayEl = item.querySelector('.key-display');
             const iconEl = item.querySelector('[data-action="toggle"] i');
 
+            // 清除之前的定时器
+            if (autoHideTimer) {
+                clearTimeout(autoHideTimer);
+                autoHideTimer = null;
+            }
+
             if (keyVisible) {
                 try {
                     const plaintext = await DecryptKey(keyId);
-                    displayEl.textContent = maskKey(plaintext, false);
+                    displayEl.textContent = plaintext;
+                    displayEl.classList.add('key-plaintext');
+                    displayEl.classList.remove('key-masked');
                     iconEl.className = 'ph ph-eye-slash';
+
+                    // 30 秒后自动隐藏
+                    autoHideTimer = setTimeout(() => {
+                        displayEl.textContent = displayEl.dataset.maskedKey || 'sk-••••••••';
+                        displayEl.classList.remove('key-plaintext');
+                        displayEl.classList.add('key-masked');
+                        iconEl.className = 'ph ph-eye';
+                        keyVisible = false;
+                    }, 30000); // 30 秒
                 } catch (error) {
-                    showToast('error', '解密失败');
+                    showToast('解密失败', 'error');
                 }
             } else {
-                displayEl.textContent = 'sk-xxxx...xxxx';
+                const maskedKey = displayEl.dataset.maskedKey || 'sk-••••••••';
+                displayEl.textContent = maskedKey;
+                displayEl.classList.remove('key-plaintext');
+                displayEl.classList.add('key-masked');
                 iconEl.className = 'ph ph-eye';
             }
         });
@@ -329,9 +471,9 @@ function renderKeys() {
             try {
                 const plaintext = await DecryptKey(keyId);
                 await navigator.clipboard.writeText(plaintext);
-                showToast('success', '已复制到剪贴板');
+                showToast('已复制到剪贴板', 'success');
             } catch (error) {
-                showToast('error', '复制失败');
+                showToast('复制失败', 'error');
             }
         });
 
@@ -342,8 +484,16 @@ function renderKeys() {
             }
         });
 
-        item.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
-            if (confirm('确定要删除这个 Key 吗？')) {
+        item.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
+            const confirmed = await showConfirmDialog({
+                title: '删除 API Key',
+                message: '确定要删除这个 Key 吗？此操作不可恢复。',
+                confirmText: '删除',
+                cancelText: '取消',
+                type: 'danger'
+            });
+
+            if (confirmed) {
                 deleteKey(keyId);
             }
         });
@@ -495,12 +645,12 @@ async function openAddModal() {
                 selectedTagIds,
                 formData.get('note') || ''
             );
-            showToast('success', '添加成功');
+            showToast('添加成功', 'success');
             modal.close();
             modal.remove();
             await loadData();
         } catch (error) {
-            showToast('error', '添加失败: ' + error.message);
+            showToast('添加失败： ' + error.message, 'error');
         }
     });
 
@@ -513,35 +663,12 @@ async function openAddModal() {
 async function deleteKey(id) {
     try {
         await DeleteKey(id);
-        showToast('success', '删除成功');
+        showToast('删除成功', 'success');
         await loadData();
     } catch (error) {
-        showToast('error', '删除失败: ' + error.message);
+        showToast('删除失败： ' + error.message, 'error');
     }
 }
-
-// === 显示 Toast ===
-function showToast(type, message) {
-    const toast = document.createElement('div');
-    toast.className = `toast glass-toast ${type} animate-fade-in-up`;
-    const icons = {
-        success: 'check-circle',
-        error: 'warning-circle',
-        info: 'info'
-    };
-    toast.innerHTML = `<i class="ph ph-${icons[type] || 'info'}"></i><span>${escapeHtml(message)}</span>`;
-    elements.toastContainer.appendChild(toast);
-
-    setTimeout(() => {
-        toast.classList.add('animate-fade-in');
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 250);
-    }, 3000);
-}
-
-// 将函数挂载到 window，供其他模块使用
-window.showToast = showToast;
-window.loadData = loadData;
 
 // === HTML 转义 ===
 function escapeHtml(text) {
@@ -670,9 +797,9 @@ async function openEditModal(keyData) {
             const input = modal.querySelector('[name="apiKey"]');
             input.value = plaintext;
             currentKeyValue = plaintext;
-            showToast('info', '已填入当前 Key');
+            showToast('已填入当前 Key', 'info');
         } catch (error) {
-            showToast('error', '获取 Key 失败');
+            showToast('获取 Key 失败', 'error');
         }
     });
 
@@ -701,12 +828,12 @@ async function openEditModal(keyData) {
                 selectedTagIds,
                 formData.get('note') || ''
             );
-            showToast('success', '更新成功');
+            showToast('更新成功', 'success');
             modal.close();
             modal.remove();
             await loadData();
         } catch (error) {
-            showToast('error', '更新失败: ' + error.message);
+            showToast('更新失败： ' + error.message, 'error');
         }
     });
 
