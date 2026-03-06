@@ -6,10 +6,10 @@
 
 #### 修复 Toast 显示类型文字问题 🐛
 - **问题**：Toast 提示显示 "success"、"info"、"error" 等类型文字，而不是消息内容
-- **原因**：`tags.js` 中 `showToast` 函数调用时参数顺序与 `ui.js` 定义不一致
+- **原因**：`tags.js` 和 `main.js` 中 `showToast` 函数调用时参数顺序与 `ui.js` 定义不一致
   - `ui.js` 定义：`showToast(message, type)` - 消息在前，类型在后
-  - `tags.js` 调用：`showToast('error', '消息')` - 类型在前，消息在后
-- **修复**：统一 `tags.js` 中所有调用为 `(message, type)` 顺序
+  - `tags.js` / `main.js` 调用：`showToast('error', '消息')` - 类型在前，消息在后
+- **修复**：统一所有调用为 `(message, type)` 顺序
 
 ### 技术实现
 
@@ -18,6 +18,7 @@
 | 文件 | 变更类型 | 说明 |
 |------|----------|------|
 | `frontend/src/tags.js` | 修改 | 修复 10 处 showToast 参数顺序 |
+| `frontend/src/main.js` | 修改 | 修复 12 处 showToast 参数顺序 |
 
 ### 非相关模块（不受影响）
 
