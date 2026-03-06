@@ -1,5 +1,40 @@
 # Release Notes
 
+## V1.0.9 (2026-03-06) - 删除功能 Bug 修复
+
+### 修复内容
+
+#### 1. 删除确认对话框报错 🔧
+- **问题**：点击删除按钮时报错 `Cannot read properties of null (reading 'addEventListener')`
+- **原因**：`ui.js:449` 使用 `modal.querySelector('dialog')` 但 `modal` 本身就是 dialog 元素
+- **修复**：改为 `modal.addEventListener('click', ...)` 并检查 `e.target === modal`
+
+#### 2. 标签删除后 API Key 列表未刷新 🔄
+- **问题**：点击标签删除按钮后，标签被删除但 API Key 列表没有刷新
+- **原因**：`onDelete` 回调只调用了 `loadTagList()` 刷新标签列表
+- **修复**：添加 `window.loadData()` 调用刷新 API Key 列表
+
+### 技术实现
+
+#### 修改的文件
+
+| 文件 | 变更类型 | 说明 |
+|------|----------|------|
+| `frontend/src/ui.js` | 修改 | 修复 showConfirmDialog 事件绑定 |
+| `frontend/src/tags.js` | 修改 | 标签删除后刷新 API Key 列表 |
+
+### 非相关模块（不受影响）
+
+- ✅ 后端 Go 代码
+- ✅ 样式文件
+- ✅ 其他 UI 组件
+
+### 升级说明
+
+此版本为 Bug 修复，建议所有用户升级。
+
+---
+
 ## V1.0.8 (2026-03-06) - Toast 参数修复
 
 ### 修复内容
