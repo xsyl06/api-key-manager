@@ -528,6 +528,51 @@ func (s *KeyService) ImportWithResolution(zipPath string, resolutions map[string
 	}
 	fmt.Println("[ImportWithResolution] 现有数据读取成功，条目数:", len(currentData.Items))
 
+	// ===== 新增：读取导入方的密钥 =====
+	importKey, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, models.NewAppError(models.ErrDataCorrupted, "读取导入密钥失败: "+err.Error())
+	}
+	if err := crypto.ValidateKey(importKey); err != nil {
+		return nil, models.NewAppError(models.ErrDataCorrupted, "导入的密钥格式无效")
+	}
+
+	// ===== 新增：读取本地密钥 =====
+	localKey, err := s.storage.ReadMasterKey()
+	if err != nil {
+		return nil, err
+	}
+
+	// ===== 新增：对导入的每个 Key 进行解密-再加密 =====
+	for i := range importFile.Items {
+		item := &importFile.Items[i]
+		// 跳过空 Key（以防万一）
+		if item.Key.Encrypted == "" {
+			continue
+		}
+
+		// 解密-再加密
+		reencrypted, err := reencryptAPIKey(&item.Key, importKey, localKey)
+		if err != nil {
+			// 如果解密失败，说明密钥不匹配，返回详细错误
+			return nil, models.NewAppError(models.ErrDecryptionFailed,
+				fmt.Sprintf("解密失败，密钥不匹配或数据损坏: %s (记录: %s)",
+					err.Error(), item.Website))
+		}
+		item.Key = *reencrypted
+	}
+	fmt.Println("[ImportWithResolution] 所有 API Key 重新加密完成")
+
+	// ===== 新增：构建标签ID映射表 =====
+	tagIDMapping := buildTagIDMapping(importFile.Tags, currentData.Tags)
+	fmt.Printf("[ImportWithResolution] 标签ID映射: %v\n", tagIDMapping)
+
+	// ===== 新增：对导入的每个 APIKeyRecord 更新 TagIds =====
+	for i := range importFile.Items {
+		remapTagIDs(&importFile.Items[i], tagIDMapping)
+	}
+	fmt.Println("[ImportWithResolution] 所有 TagIds 重新映射完成")
+
 	// 创建备份
 	backupDir := filepath.Join(s.storage.GetDataDir(), "backup", time.Now().Format("2006-01-02-150405"))
 	fmt.Println("[ImportWithResolution] 创建备份目录:", backupDir)
@@ -572,14 +617,17 @@ func (s *KeyService) ImportWithResolution(zipPath string, resolutions map[string
 	}
 	fmt.Println("[ImportWithResolution] 合并完成，stats:", stats)
 
-	// 合并标签库
+	// 合并标签库（使用映射后的ID）
 	existingTagNames := make(map[string]bool)
 	for _, tag := range currentData.Tags {
 		existingTagNames[tag.Name] = true
 	}
 	for _, importTag := range importFile.Tags {
 		if !existingTagNames[importTag.Name] {
-			currentData.Tags = append(currentData.Tags, importTag)
+			// 使用映射后的ID（新标签保留原ID，同名标签不新增）
+			newTag := importTag
+			newTag.ID = tagIDMapping[importTag.ID]
+			currentData.Tags = append(currentData.Tags, newTag)
 		}
 	}
 
@@ -701,4 +749,62 @@ func copyDir(src, dst string) error {
 	}
 
 	return nil
+}
+
+// reencryptAPIKey 用旧密钥解密后用新密钥重新加密
+// 用于导入时将导入的密文转换为本地密钥加密
+func reencryptAPIKey(encryptedData *models.EncryptedData, oldKey, newKey []byte) (*models.EncryptedData, error) {
+	// Step 1: 用旧密钥解密
+	plaintext, err := crypto.Decrypt(encryptedData, oldKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 2: 用新密钥重新加密
+	newEncrypted, err := crypto.Encrypt(plaintext, newKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return newEncrypted, nil
+}
+
+// buildTagIDMapping 构建标签ID映射表
+// 返回: map[importTagID]localTagID
+// - 如果本地已有同名标签，映射到本地标签ID
+// - 如果本地没有同名标签，保留导入的标签ID
+func buildTagIDMapping(importTags []models.Tag, localTags []models.Tag) map[string]string {
+	mapping := make(map[string]string)
+
+	// 建立本地标签名 -> ID 的映射
+	localTagNameToID := make(map[string]string)
+	for _, tag := range localTags {
+		localTagNameToID[strings.ToLower(tag.Name)] = tag.ID
+	}
+
+	// 遍历导入的标签，构建映射
+	for _, importTag := range importTags {
+		lowerName := strings.ToLower(importTag.Name)
+		if localID, exists := localTagNameToID[lowerName]; exists {
+			// 本地已有同名标签，映射到本地ID
+			mapping[importTag.ID] = localID
+		} else {
+			// 本地没有同名标签，保留导入的ID
+			mapping[importTag.ID] = importTag.ID
+		}
+	}
+
+	return mapping
+}
+
+// remapTagIDs 使用映射表更新 APIKeyRecord 的 TagIds
+func remapTagIDs(item *models.APIKeyRecord, tagIDMapping map[string]string) {
+	newTagIds := make([]string, 0, len(item.TagIds))
+	for _, tagID := range item.TagIds {
+		if mappedID, ok := tagIDMapping[tagID]; ok {
+			newTagIds = append(newTagIds, mappedID)
+		}
+		// 如果映射表中没有该ID（不应该发生），则跳过该标签
+	}
+	item.TagIds = newTagIds
 }
