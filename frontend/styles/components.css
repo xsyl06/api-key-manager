@@ -182,51 +182,65 @@
   padding-left: 40px;
 }
 
-/* === Key 列表 - PRD 分隔线风格 === */
+/* === Key 列表 - V1.0.2 优化样式 === */
 .key-list {
   flex: 1;
   overflow-y: auto;
   padding: 0 var(--spacing-lg) var(--spacing-lg);
 }
 
+/* V1.0.2: 重构 Key 列表项样式 - 半圆角高亮 + 选中阴影 */
 .key-item {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-md) 0;
-  border-bottom: 1px solid var(--glass-border);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
   background: transparent;
-  backdrop-filter: none;
-  border: none;
-  border-radius: 0;
-  margin-bottom: 0;
-  transition: background var(--transition-fast);
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
 }
 
 .key-item:first-child {
-  border-top: 1px solid var(--glass-border);
+  margin-top: 0;
 }
 
+/* V1.0.2: Hover 状态 - 临时高亮 */
 .key-item:hover {
-  background: var(--glass-bg-hover);
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  border-top: 1px solid transparent;
-  transform: none;
-  padding: var(--spacing-md);
-  margin: 0 calc(-1 * var(--spacing-md)) var(--spacing-sm);
-  width: calc(100% + var(--spacing-md) * 2);
+  background: var(--key-item-hover-bg);
+  border-color: var(--glass-border);
+  box-shadow: var(--key-item-hover-shadow);
 }
 
-.key-item:first-child:hover {
-  border-top: 1px solid transparent;
-}
-
-/* V1.0.1: 选中状态 */
+/* V1.0.2: Selected 状态 - 持久选中 */
 .key-item.selected {
-  background: rgba(102, 126, 234, 0.1);
-  border-left: 3px solid var(--accent-solid);
-  padding-left: calc(var(--spacing-md) - 3px);
+  background: var(--key-item-selected-bg);
+  border-color: transparent;
+  box-shadow: var(--key-item-selected-shadow);
+}
+
+/* V1.0.2: 左侧半圆角高亮条 - 使用 ::before 伪元素 */
+.key-item.selected::before,
+.key-item:hover::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  max-height: 40px;
+  background: var(--accent-solid);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  opacity: var(--key-item-accent-opacity, 0.6);
+  transition: opacity var(--transition-fast);
+}
+
+.key-item.selected::before {
+  opacity: var(--key-item-accent-opacity, 1);
 }
 
 .key-website {
@@ -738,6 +752,45 @@ dialog.modal {
   padding: 4px 8px;
   font-size: 12px;
   font-family: monospace;
+}
+
+/* === API Key 输入框切换按钮 (V1.0.2) === */
+.key-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.key-input-wrapper input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.toggle-key-visibility {
+  position: absolute !important;
+  right: 8px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  opacity: 0.6 !important;
+  padding: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all var(--transition-fast) !important;
+}
+
+.toggle-key-visibility:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+.toggle-key-visibility i {
+  font-size: 16px;
+  color: var(--text-secondary);
 }
 
 /* === 标签列表项 === */

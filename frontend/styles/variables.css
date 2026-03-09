@@ -70,6 +70,13 @@
 
   /* === 特殊元素 - 暗色默认 === */
   --key-display-bg: rgba(0, 0, 0, 0.2);
+
+  /* === V1.0.2: Key 列表项选中状态变量 - 深色主题 === */
+  --key-item-hover-bg: rgba(102, 126, 234, 0.08);
+  --key-item-selected-bg: rgba(102, 126, 234, 0.15);
+  --key-item-selected-shadow: 0 2px 12px rgba(102, 126, 234, 0.25);
+  --key-item-hover-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --key-item-accent-opacity: 0.85;
 }
 
 /* === 暗色主题（默认） === */
@@ -112,4 +119,11 @@
   /* === 特殊元素 - 浅色 === */
   --key-display-bg: rgba(0, 0, 0, 0.05);
   --glass-overlay: rgba(0, 0, 0, 0.3);
+
+  /* === V1.0.2: Key 列表项选中状态变量 - 浅色主题 === */
+  --key-item-hover-bg: rgba(102, 126, 234, 0.06);
+  --key-item-selected-bg: rgba(102, 126, 234, 0.12);
+  --key-item-selected-shadow: 0 2px 12px rgba(102, 126, 234, 0.15);
+  --key-item-hover-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --key-item-accent-opacity: 0.75;
 }

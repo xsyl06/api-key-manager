@@ -577,10 +577,12 @@ async function openEditModal(keyData) {
                 </div>
                 <div class="form-group">
                     <label>API Key *</label>
-                    <input type="password" class="glass-input form-input" name="apiKey" required placeholder="sk-...">
-                    <button type="button" class="glass-btn" id="btnFillKey" style="margin-top: var(--spacing-xs); font-size: 12px;">
-                        <i class="ph ph-arrow-counter-clockwise"></i> 填入当前 Key
-                    </button>
+                    <div class="key-input-wrapper" style="position: relative;">
+                        <input type="password" class="glass-input form-input" name="apiKey" required placeholder="正在加载..." id="editApiKeyInput">
+                        <button type="button" class="toggle-key-visibility" id="toggleEditKeyVisibility" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; opacity: 0.7;">
+                            <i class="ph ph-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>标签（点击选择）</label>
@@ -611,6 +613,26 @@ async function openEditModal(keyData) {
     let selectedTagIds = [...(keyData.tagIds || [])];
     let allTags = [];
     let currentKeyValue = '';
+
+    const apiKeyInput = modal.querySelector('#editApiKeyInput');
+    const toggleBtn = modal.querySelector('#toggleEditKeyVisibility');
+
+    // 打开弹窗时自动解密并填充 API Key
+    try {
+        currentKeyValue = await DecryptKey(keyData.id);
+        apiKeyInput.value = currentKeyValue;
+        apiKeyInput.placeholder = 'sk-...';
+    } catch (error) {
+        apiKeyInput.placeholder = '加载失败，请手动输入';
+        showToast('error', '获取 Key 失败: ' + error.message);
+    }
+
+    // 切换 API Key 显示/隐藏
+    toggleBtn.addEventListener('click', () => {
+        const isPassword = apiKeyInput.type === 'password';
+        apiKeyInput.type = isPassword ? 'text' : 'password';
+        toggleBtn.querySelector('i').className = isPassword ? 'ph ph-eye-slash' : 'ph ph-eye';
+    });
 
     // 加载标签
     try {
@@ -673,19 +695,6 @@ async function openEditModal(keyData) {
         });
     }
 
-    // 填入当前 Key 按钮
-    modal.querySelector('#btnFillKey').addEventListener('click', async () => {
-        try {
-            const plaintext = await DecryptKey(keyData.id);
-            const input = modal.querySelector('[name="apiKey"]');
-            input.value = plaintext;
-            currentKeyValue = plaintext;
-            showToast('info', '已填入当前 Key');
-        } catch (error) {
-            showToast('error', '获取 Key 失败');
-        }
-    });
-
     // 取消按钮
     modal.querySelector('#btnCancel').addEventListener('click', () => {
         modal.close();
@@ -702,6 +711,12 @@ async function openEditModal(keyData) {
         e.preventDefault();
         const formData = new FormData(e.target);
         const apiKey = formData.get('apiKey');
+
+        // 验证 API Key 不能为空
+        if (!apiKey || apiKey.trim() === '') {
+            showToast('error', 'API Key 不能为空');
+            return;
+        }
 
         try {
             await UpdateKey(
