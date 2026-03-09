@@ -64,7 +64,10 @@ const AppState = {
     selectedTag: null,
     searchQuery: '',
     loading: false,
-    displayedKeys: []
+    displayedKeys: [],
+    selectedKeyId: null,     // V1.0.1: 当前选中的 Key ID（用于键盘快捷键）
+    currentModal: null,      // V1.0.1: 当前打开的模态框引用
+    keyVisibilityTimers: new Map()  // V1.0.1: Key 显示定时器映射
 };
 
 // === DOM 元素 ===
@@ -154,6 +157,9 @@ function bindEvents() {
         AppState.searchQuery = e.target.value;
         filterKeys();
     });
+
+    // V1.0.1: 添加全局键盘快捷键监听
+    document.addEventListener('keydown', handleGlobalKeyboard);
 }
 
 // === 加载数据 ===
@@ -270,7 +276,8 @@ function renderKeys() {
     }
 
     elements.keyList.innerHTML = AppState.displayedKeys.map((key, index) => `
-        <div class="key-item animate-list-item" style="animation-delay: ${index * 50}ms" data-id="${key.id}">
+        <div class="key-item animate-list-item ${AppState.selectedKeyId === key.id ? 'selected' : ''}"
+             style="animation-delay: ${index * 50}ms" data-id="${key.id}" tabindex="0">
             <div class="key-website">
                 <i class="ph ${getWebsiteIcon(key.website)}"></i> ${escapeHtml(key.website)}
             </div>
@@ -304,47 +311,47 @@ function renderKeys() {
     // 绑定操作事件
     elements.keyList.querySelectorAll('.key-item').forEach(item => {
         const keyId = item.dataset.id;
-        let keyVisible = false;
 
-        item.querySelector('[data-action="toggle"]')?.addEventListener('click', async () => {
-            keyVisible = !keyVisible;
-            const displayEl = item.querySelector('.key-display');
-            const iconEl = item.querySelector('[data-action="toggle"] i');
-
-            if (keyVisible) {
-                try {
-                    const plaintext = await DecryptKey(keyId);
-                    displayEl.textContent = maskKey(plaintext, false);
-                    iconEl.className = 'ph ph-eye-slash';
-                } catch (error) {
-                    showToast('error', '解密失败');
-                }
-            } else {
-                displayEl.textContent = 'sk-xxxx...xxxx';
-                iconEl.className = 'ph ph-eye';
-            }
+        // V1.0.1: 点击选中 Key（用于键盘快捷键）
+        item.addEventListener('click', () => {
+            selectKeyItem(keyId);
         });
 
-        item.querySelector('[data-action="copy"]')?.addEventListener('click', async () => {
-            try {
-                const plaintext = await DecryptKey(keyId);
-                await navigator.clipboard.writeText(plaintext);
-                showToast('success', '已复制到剪贴板');
-            } catch (error) {
-                showToast('error', '复制失败');
-            }
-        });
-
-        item.querySelector('[data-action="edit"]')?.addEventListener('click', () => {
+        // V1.0.1: 双击编辑
+        item.addEventListener('dblclick', () => {
             const keyData = AppState.keys.find(k => k.id === keyId);
             if (keyData) {
                 openEditModal(keyData);
             }
         });
 
-        item.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
-            if (confirm('确定要删除这个 Key 吗？')) {
-                deleteKey(keyId);
+        // 显示/隐藏切换
+        item.querySelector('[data-action="toggle"]')?.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await toggleKeyVisibility(keyId, item);
+        });
+
+        // 复制
+        item.querySelector('[data-action="copy"]')?.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await copyKeyToClipboard(keyId);
+        });
+
+        // 编辑
+        item.querySelector('[data-action="edit"]')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const keyData = AppState.keys.find(k => k.id === keyId);
+            if (keyData) {
+                openEditModal(keyData);
+            }
+        });
+
+        // 删除 - V1.0.1: 使用自定义确认对话框
+        item.querySelector('[data-action="delete"]')?.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const keyData = AppState.keys.find(k => k.id === keyId);
+            if (keyData) {
+                await showDeleteConfirmDialog(keyData);
             }
         });
     });
@@ -410,6 +417,7 @@ async function openAddModal() {
 
     document.body.appendChild(modal);
     modal.showModal();
+    AppState.currentModal = modal;  // V1.0.1: 追踪当前模态框
 
     let selectedTagIds = [];
     let allTags = [];
@@ -506,10 +514,11 @@ async function openAddModal() {
 
     modal.addEventListener('close', () => {
         modal.remove();
+        AppState.currentModal = null;  // V1.0.1: 清除模态框引用
     });
 }
 
-// === 删除 Key ===
+// === 打开编辑弹窗 ===
 async function deleteKey(id) {
     try {
         await DeleteKey(id);
@@ -597,6 +606,7 @@ async function openEditModal(keyData) {
 
     document.body.appendChild(modal);
     modal.showModal();
+    AppState.currentModal = modal;  // V1.0.1: 追踪当前模态框
 
     let selectedTagIds = [...(keyData.tagIds || [])];
     let allTags = [];
@@ -712,7 +722,242 @@ async function openEditModal(keyData) {
 
     modal.addEventListener('close', () => {
         modal.remove();
+        AppState.currentModal = null;  // V1.0.1: 清除模态框引用
     });
+}
+
+// ============================================
+// V1.0.1 新增功能
+// ============================================
+
+/**
+ * V1.0.1: 选中 Key 项（用于键盘快捷键）
+ */
+function selectKeyItem(keyId) {
+    // 清除之前的选中状态
+    elements.keyList.querySelectorAll('.key-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+
+    // 设置新的选中状态
+    const item = elements.keyList.querySelector(`[data-id="${keyId}"]`);
+    if (item) {
+        item.classList.add('selected');
+        AppState.selectedKeyId = keyId;
+    }
+}
+
+/**
+ * V1.0.1: 切换 Key 显示/隐藏（带30秒自动隐藏）
+ */
+async function toggleKeyVisibility(keyId, itemElement) {
+    const displayEl = itemElement.querySelector('.key-display');
+    const iconEl = itemElement.querySelector('[data-action="toggle"] i');
+    const isVisible = displayEl.dataset.visible === 'true';
+
+    // 清除之前的定时器
+    if (AppState.keyVisibilityTimers.has(keyId)) {
+        clearTimeout(AppState.keyVisibilityTimers.get(keyId));
+        AppState.keyVisibilityTimers.delete(keyId);
+    }
+
+    if (isVisible) {
+        // 隐藏
+        displayEl.textContent = 'sk-xxxx...xxxx';
+        displayEl.dataset.visible = 'false';
+        iconEl.className = 'ph ph-eye';
+    } else {
+        // 显示
+        try {
+            const plaintext = await DecryptKey(keyId);
+            displayEl.textContent = maskKey(plaintext, false);
+            displayEl.dataset.visible = 'true';
+            iconEl.className = 'ph ph-eye-slash';
+
+            // V1.0.1: 30秒后自动隐藏
+            const timer = setTimeout(() => {
+                displayEl.textContent = 'sk-xxxx...xxxx';
+                displayEl.dataset.visible = 'false';
+                iconEl.className = 'ph ph-eye';
+                AppState.keyVisibilityTimers.delete(keyId);
+            }, 30000);
+            AppState.keyVisibilityTimers.set(keyId, timer);
+        } catch (error) {
+            showToast('error', '解密失败');
+        }
+    }
+}
+
+/**
+ * V1.0.1: 复制 Key 到剪贴板
+ */
+async function copyKeyToClipboard(keyId) {
+    try {
+        const plaintext = await DecryptKey(keyId);
+        await navigator.clipboard.writeText(plaintext);
+        showToast('success', '已复制到剪贴板');
+    } catch (error) {
+        showToast('error', '复制失败');
+    }
+}
+
+/**
+ * V1.0.1: 显示删除确认对话框
+ */
+async function showDeleteConfirmDialog(keyData) {
+    const modal = document.createElement('dialog');
+    modal.className = 'modal confirm-dialog';
+    modal.innerHTML = `
+        <div class="modal-content animate-scale-in" style="min-width: 380px; max-width: 420px;">
+            <div class="modal-header">
+                <h2><i class="ph ph-warning" style="color: var(--color-error);"></i> 确认删除</h2>
+                <button class="modal-close"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="confirm-dialog-content">
+                <p style="margin-bottom: var(--spacing-md);">
+                    确定要删除 <strong>${escapeHtml(keyData.website)}</strong> 的密钥吗？
+                </p>
+                <p style="color: var(--text-muted); font-size: 13px;">
+                    <i class="ph ph-info"></i> 此操作不可恢复
+                </p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" class="glass-btn" id="btnCancelDelete">
+                    <i class="ph ph-x"></i> 取消 (Esc)
+                </button>
+                <button type="button" class="glass-btn" id="btnConfirmDelete" style="background: rgba(239, 68, 68, 0.8); border-color: var(--color-error);">
+                    <i class="ph ph-trash"></i> 删除 (Enter)
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    modal.showModal();
+    AppState.currentModal = modal;
+
+    // 聚焦到删除按钮
+    modal.querySelector('#btnConfirmDelete')?.focus();
+
+    // 取消
+    const closeDialog = () => {
+        modal.close();
+        modal.remove();
+        AppState.currentModal = null;
+    };
+
+    modal.querySelector('#btnCancelDelete').addEventListener('click', closeDialog);
+    modal.querySelector('.modal-close').addEventListener('click', closeDialog);
+
+    // 确认删除
+    modal.querySelector('#btnConfirmDelete').addEventListener('click', async () => {
+        closeDialog();
+        await deleteKey(keyData.id);
+    });
+
+    modal.addEventListener('close', () => {
+        modal.remove();
+        AppState.currentModal = null;
+    });
+}
+
+/**
+ * V1.0.1: 处理全局键盘快捷键
+ */
+function handleGlobalKeyboard(e) {
+    // Ctrl + N: 新建密钥
+    if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        openAddModal();
+        return;
+    }
+
+    // Ctrl + F: 聚焦搜索框
+    if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        elements.searchInput?.focus();
+        return;
+    }
+
+    // Esc: 关闭模态框
+    if (e.key === 'Escape') {
+        if (AppState.currentModal) {
+            AppState.currentModal.close();
+            return;
+        }
+    }
+
+    // Ctrl + Enter: 在模态框中保存
+    if (e.ctrlKey && e.key === 'Enter') {
+        if (AppState.currentModal) {
+            const submitBtn = AppState.currentModal.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                e.preventDefault();
+                submitBtn.click();
+                return;
+            }
+        }
+    }
+
+    // 以下快捷键需要在主界面（非模态框）中生效
+    if (AppState.currentModal) return;
+
+    // Delete: 删除选中的 Key
+    if (e.key === 'Delete') {
+        if (AppState.selectedKeyId) {
+            const keyData = AppState.keys.find(k => k.id === AppState.selectedKeyId);
+            if (keyData) {
+                showDeleteConfirmDialog(keyData);
+            }
+        }
+        return;
+    }
+
+    // C: 复制选中的 Key
+    if (e.key === 'c' || e.key === 'C') {
+        // 排除在输入框中的情况
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (AppState.selectedKeyId) {
+            copyKeyToClipboard(AppState.selectedKeyId);
+        }
+        return;
+    }
+
+    // 上/下箭头: 在 Key 列表中导航
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        e.preventDefault();
+        const keys = AppState.displayedKeys;
+        if (keys.length === 0) return;
+
+        const currentIndex = keys.findIndex(k => k.id === AppState.selectedKeyId);
+
+        if (e.key === 'ArrowUp') {
+            const newIndex = currentIndex <= 0 ? keys.length - 1 : currentIndex - 1;
+            selectKeyItem(keys[newIndex].id);
+        } else {
+            const newIndex = currentIndex >= keys.length - 1 ? 0 : currentIndex + 1;
+            selectKeyItem(keys[newIndex].id);
+        }
+
+        // 滚动到可见区域
+        const selectedItem = elements.keyList.querySelector('.key-item.selected');
+        selectedItem?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+    }
+
+    // Enter: 编辑选中的 Key
+    if (e.key === 'Enter') {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (AppState.selectedKeyId) {
+            const keyData = AppState.keys.find(k => k.id === AppState.selectedKeyId);
+            if (keyData) {
+                openEditModal(keyData);
+            }
+        }
+        return;
+    }
 }
 
 // === 启动应用 ===

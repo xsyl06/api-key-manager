@@ -438,24 +438,18 @@ function openDeleteTagConfirm(tag, onDelete) {
                     <p>确定要删除标签 <span class="tag-pill" style="background-color: ${tag.color}; color: ${TagManager.getContrastColor(tag.color)};">${escapeHtml(tag.name)}</span> 吗？</p>
 
                     ${count > 0 ? `
-                        <p style="margin-top: var(--spacing-sm);">该标签当前被 <strong>${count}</strong> 个 API Key 使用。</p>
-
-                        <div class="confirm-dialog-options">
-                            <label class="confirm-dialog-option">
-                                <input type="radio" name="deleteOption" value="keep">
-                                <span>仅从标签库删除，保留 Key 上的标签标记</span>
-                            </label>
-                            <label class="confirm-dialog-option">
-                                <input type="radio" name="deleteOption" value="remove" checked>
-                                <span>从标签库和所有 Key 中完全删除该标签<br><small>（这 ${count} 个 Key 将不再带有此标签）</small></span>
-                            </label>
-                        </div>
+                        <p style="margin-top: var(--spacing-sm); color: var(--color-warning);">
+                            <i class="ph ph-warning"></i>
+                            该标签当前被 <strong>${count}</strong> 个 API Key 使用，删除后将同时从这些 Key 中移除。
+                        </p>
                     ` : '<p style="margin-top: var(--spacing-sm);">该标签未被使用，可以安全删除。</p>'}
                 </div>
 
                 <div class="modal-footer">
                     <button class="glass-btn" id="btnCancel">取消</button>
-                    <button class="glass-btn glass-btn-danger" id="btnDelete">删除</button>
+                    <button class="glass-btn" id="btnDelete" style="background: rgba(239, 68, 68, 0.8); border-color: var(--color-error);">
+                        <i class="ph ph-trash"></i> 删除
+                    </button>
                 </div>
             </div>
         `;
@@ -474,14 +468,10 @@ function openDeleteTagConfirm(tag, onDelete) {
             modal.remove();
         });
 
-        // 删除按钮
+        // 删除按钮 - V1.0.1: 固定为 true，统一从标签库和所有 Key 中删除
         modal.querySelector('#btnDelete').addEventListener('click', async () => {
-            const removeFromKeys = count > 0 ?
-                modal.querySelector('input[name="deleteOption"]:checked').value === 'remove' :
-                false;
-
             try {
-                await TagManager.deleteTag(tag.id, removeFromKeys);
+                await TagManager.deleteTag(tag.id, true);
                 showToast('success', '标签删除成功');
                 modal.close();
                 modal.remove();

@@ -222,6 +222,13 @@
   border-top: 1px solid transparent;
 }
 
+/* V1.0.1: 选中状态 */
+.key-item.selected {
+  background: rgba(102, 126, 234, 0.1);
+  border-left: 3px solid var(--accent-solid);
+  padding-left: calc(var(--spacing-md) - 3px);
+}
+
 .key-website {
   flex: 1;
   font-weight: 500;
